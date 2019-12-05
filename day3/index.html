@@ -9,33 +9,120 @@
       <input type="file" id="filepicker" accept="text/plain" />
     </div>
     <div class="hud">
-      <canvas id="canvas"></canvas>
+      <canvas id="canvas" width="2000" height="2000"></canvas>
       <pre id="input"></pre>
     </div>
     <script>
+      var CANVAS_WIDTH = 0;
+      var CANVAS_HEIGHT = 0;
+
       function main() {
-        filepicker_init();
+        var ctx = canvas_init();
+        filepicker_init((data) => { 
+          var wires = parse_wires(data);
+          var center = point_new(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+          wire_draw(ctx, wires[0], center);
+          wire_draw(ctx, wires[1], center);
+        });
       }
 
-      function filepicker_init() {
-        $filepicker = document.getElementById("filepicker");
+      function filepicker_init(file_callback) {
+        var $filepicker = document.getElementById("filepicker");
         $filepicker.onchange = (e) => {
           var filename = e.target.value;
           var file = e.target.files[0];
-          load_file(file);
+          load_file(file, file_callback);
         };
       }
 
-      function load_file(file) {
+      function canvas_init() {
+        var $canvas = document.getElementById("canvas");
+        CANVAS_WIDTH = $canvas.offsetWidth;
+        CANVAS_HEIGHT = $canvas.offsetHeight;
+        var ctx = $canvas.getContext('2d');
+        return ctx;
+      }
+
+      function load_file(file, load_callback) {
         var reader = new FileReader();
-        reader.onload = ((e) => { parse_wires(e.target.result); });
+        reader.onload = ((e) => { load_callback(e.target.result); });
         reader.readAsText(file);
       }
 
       function parse_wires(input) {
-        // TODO
         $input = document.getElementById("input");
         $input.innerHTML = input;
+        var rawWires = input.split("\n");
+        var wireA = parse_wire(rawWires[0].trim());
+        var wireB = parse_wire(rawWires[1].trim());
+
+        return [wireA, wireB];
+      }
+
+      function parse_wire(raw) {
+        var instructions = raw.split(",");
+        var trace = point_new(0, 0);
+        var segments = [];
+        for (var inst of instructions) {
+          var direction = inst.charAt(0);
+          var magnitude = parseInt(inst.substring(1));
+          var start = Object.assign({}, trace);
+          switch (direction) {
+            case 'U':
+              trace = point_translate(trace, 0, magnitude);
+              break;
+            case 'D':
+              trace = point_translate(trace, 0, 0 - magnitude);
+              break;
+            case 'L':
+              trace = point_translate(trace, 0 - magnitude, 0);
+              break;
+            case 'R':
+              trace = point_translate(trace, magnitude, 0);
+              break;
+            default:
+              throw "Unexpected direction: " + direction;
+          }
+          var end = Object.assign({}, trace);
+          segments.push(segment_new(start, end));
+        }
+
+        return segments;
+      }
+
+      function point_new(x, y) {
+        return {x, y};
+      }
+
+      function point_translate(point, deltaX, deltaY) {
+        return {
+          x: point.x + deltaX,
+          y: point.y + deltaY,
+        };
+      }
+
+      function segment_new(startPoint, endPoint) {
+        return {
+          start: startPoint,
+          end: endPoint,
+        };
+      }
+
+      function wire_draw(ctx, wire, centerPoint) {
+        var SCALE = 0.1;
+        var OFFSET_X = centerPoint.x;
+        var OFFSET_Y = centerPoint.y;
+
+        for (var segment of wire) {
+          ctx.beginPath();
+          var startX = (segment.start.x * SCALE) + OFFSET_X;
+          var startY = (segment.start.y * SCALE) + OFFSET_Y;
+          ctx.moveTo(startX, startY);
+          var endX = (segment.end.x * SCALE) + OFFSET_X;
+          var endY = (segment.end.y * SCALE) + OFFSET_Y;
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
       }
 
       main();
