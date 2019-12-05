@@ -2,10 +2,38 @@ package main
 
 import "testing"
 
-func TestAdjPass(t *testing.T) {
+func TestAdjSimplePass(t *testing.T) {
 	n := 123445
 	if !test_adj(n) {
 		t.Errorf("Expected pass: %d", n)
+	}
+}
+
+func TestAdjComplexPass(t *testing.T) {
+	n := 122111
+	if !test_adj(n) {
+		t.Errorf("Expected pass: %d", n)
+	}
+}
+
+func TestAdjComplexPass2(t *testing.T) {
+	n := 111122
+	if !test_adj(n) {
+		t.Errorf("Expected pass: %d", n)
+	}
+}
+
+func TestAdjThriceFail(t *testing.T) {
+	n := 124445
+	if test_adj(n) {
+		t.Errorf("Expected fail: %d", n)
+	}
+}
+
+func TestAdjQuadFail(t *testing.T) {
+	n := 144445
+	if test_adj(n) {
+		t.Errorf("Expected fail: %d", n)
 	}
 }
 

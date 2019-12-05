@@ -29,10 +29,19 @@ func test_adj(n int) bool {
   n /= 10
   for n > 0 {
     cur := n % 10
-    if cur == last {
-      return true;
-    }
     n /= 10
+    if cur == last {
+      // Peek next
+      nxt := n % 10
+      if nxt != cur {
+        return true;
+      }
+
+      for nxt == last {
+        n /= 10
+        nxt = n % 10
+      }
+    }
     last = cur
   }
   return false
