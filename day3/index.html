@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+    </style>
+  </head>
+  <body>
+    <div class="config">
+      <input type="file" id="filepicker" accept="text/plain" />
+    </div>
+    <div class="hud">
+      <canvas id="canvas"></canvas>
+      <pre id="input"></pre>
+    </div>
+    <script>
+      function main() {
+        filepicker_init();
+      }
+
+      function filepicker_init() {
+        $filepicker = document.getElementById("filepicker");
+        $filepicker.onchange = (e) => {
+          var filename = e.target.value;
+          var file = e.target.files[0];
+          load_file(file);
+        };
+      }
+
+      function load_file(file) {
+        var reader = new FileReader();
+        reader.onload = ((e) => { parse_wires(e.target.result); });
+        reader.readAsText(file);
+      }
+
+      function parse_wires(input) {
+        // TODO
+        $input = document.getElementById("input");
+        $input.innerHTML = input;
+      }
+
+      main();
+    </script>
+  </body>
+</html>
