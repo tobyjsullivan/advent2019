@@ -30,4 +30,24 @@ class MainTest {
         assert(result.contains(Orbit("J", "K")))
         assert(result.contains(Orbit("K", "L")))
     }
+
+    @Test
+    fun testBuildGraph() {
+        val orbits = listOf(
+                Orbit("AAA", "BBB"),
+                Orbit("BBB", "CCC"),
+                Orbit("BBB", "DDD")
+        )
+
+        val result = buildGraph(orbits)
+
+        assert(result.nodes.contains("AAA"))
+        assert(result.nodes.contains("BBB"))
+        assert(result.nodes.contains("CCC"))
+        assert(result.nodes.contains("DDD"))
+
+        assert(result.edges.contains(Pair("AAA", "BBB")))
+        assert(result.edges.contains(Pair("BBB", "CCC")))
+        assert(result.edges.contains(Pair("BBB", "DDD")))
+    }
 }
