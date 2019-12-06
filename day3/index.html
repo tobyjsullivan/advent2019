@@ -15,9 +15,9 @@
     <script>
       var CLR_BG = '#003300';
       var CLR_ORIGIN = '#d9d9d9';
-      var CLR_WIRE_A = '#ff0000';
-      var CLR_WIRE_B = '#00ff00';
-      var SCALE = 0.3;
+      var CLR_WIRE_A = '#cc9900';
+      var CLR_WIRE_B = '#00b300';
+      var SCALE = 0.1;
       var OFFSET_X = 0;
       var OFFSET_Y = 0;
       var CANVAS_WIDTH = 0;
@@ -34,6 +34,11 @@
           // Draw origin
           ctx.strokeStyle = CLR_ORIGIN;
           point_draw(ctx, point_new(0, 0));
+
+          var intersect_points = find_all_intersects(wires[0], wires[1]);
+          for (var intersect of intersect_points) {
+            point_draw(ctx, intersect);
+          }
         });
       }
 
@@ -106,6 +111,19 @@
         return segments;
       }
 
+      function find_all_intersects(wireA, wireB) {
+        var results = [];
+        for (var segmentA of wireA) {
+          for (var segmentB of wireB) {
+            var intersect_point = segment_intersect(segmentA, segmentB);
+            if (intersect_point !== null) {
+              results.push(intersect_point);
+            }
+          }
+        }
+        return results;
+      }
+
       function point_new(x, y) {
         return {x, y};
       }
@@ -127,11 +145,96 @@
         ctx.stroke();
       }
 
+      // Distance to origin
+      function point_manhattan(point) {
+        return Math.abs(point.x) + Math.abs(point.y);
+      }
+
       function segment_new(startPoint, endPoint) {
         return {
           start: startPoint,
           end: endPoint,
         };
+      }
+
+      function segment_intersect(a, b) {
+        var aHSpanStart = Math.min(a.start.x, a.end.x);
+        var aHSpanEnd = Math.max(a.start.x, a.end.x);
+        var bHSpanStart = Math.min(b.start.x, b.end.x);
+        var bHSpanEnd = Math.max(b.start.x, b.end.x);
+
+        var aVSpanStart = Math.min(a.start.y, a.end.y);
+        var aVSpanEnd = Math.max(a.start.y, a.end.y);
+        var bVSpanStart = Math.min(b.start.y, b.end.y);
+        var bVSpanEnd = Math.max(b.start.y, b.end.y);
+
+        if (aHSpanEnd < bHSpanStart
+          || aHSpanStart > bHSpanEnd
+          || aVSpanEnd < bVSpanStart
+          || aVSpanStart > bVSpanEnd
+        ) {
+          return null;
+        }
+
+        // Where do they intersect (closest to 0 if overlapping)?
+        var hOverlapStart;
+        var hOverlapEnd;
+        if (aHSpanStart <= bHSpanStart) {
+          hOverlapStart = bHSpanStart;
+        } else {
+          hOverlapStart = aHSpanStart;
+        }
+
+        if (aHSpanEnd <= bHSpanEnd) {
+          hOverlapEnd = aHSpanEnd;
+        } else {
+          hOverlapEnd = bHSpanEnd;
+        }
+
+        var vOverlapStart;
+        var vOverlapEnd;
+        if (aVSpanStart <= bVSpanStart) {
+          vOverlapStart = bVSpanStart;
+        } else {
+          vOverlapStart = aVSpanStart;
+        }
+
+        if (aVSpanEnd <= bVSpanEnd) {
+          vOverlapEnd = aVSpanEnd;
+        } else {
+          vOverlapEnd = bVSpanEnd;
+        }
+
+        if (hOverlapStart === hOverlapEnd && vOverlapStart === vOverlapEnd) {
+          // Perpendicular
+          return point_new(hOverlapStart, vOverlapStart);
+        }
+
+        if (hOverlapStart === hOverlapEnd) {
+          // Vertical overlapping
+          var p1 = point_new(hOverlapStart, vOverlapStart);
+          var p2 = point_new(hOverlapStart, vOverlapEnd);
+
+          var d1 = point_manhattan(p1);
+          var d2 = point_manhattan(p2);
+          if (d1 < d2) {
+            return p1;
+          } else {
+            return p2;
+          }
+        } else {
+          // Horizontal overlapping
+          var p1 = point_new(hOverlapStart, vOverlapStart);
+          var p2 = point_new(hOverlapEnd, vOverlapStart);
+
+          var d1 = point_manhattan(p1);
+          var d2 = point_manhattan(p2);
+          if (d1 < d2) {
+            return p1;
+          } else {
+            return p2;
+          }
+        }
       }
 
       function wire_draw(ctx, wire) {
