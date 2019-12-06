@@ -17,7 +17,7 @@
       var CLR_ORIGIN = '#d9d9d9';
       var CLR_WIRE_A = '#cc9900';
       var CLR_WIRE_B = '#00b300';
-      var SCALE = 0.1;
+      var SCALE = 2;
       var OFFSET_X = 0;
       var OFFSET_Y = 0;
       var CANVAS_WIDTH = 0;
@@ -25,7 +25,7 @@
 
       function main() {
         var ctx = canvas_init();
-        filepicker_init((data) => { 
+        filepicker_init((data) => {
           var wires = parse_wires(data);
           ctx.strokeStyle = CLR_WIRE_A;
           wire_draw(ctx, wires[0]);
@@ -36,13 +36,14 @@
           point_draw(ctx, point_new(0, 0));
 
           var closest_dist = null;
-          var intersect_points = find_all_intersects(wires[0], wires[1]);
-          for (var intersect of intersect_points) {
-            var dist = point_manhattan(intersect);
+          var intersections = find_all_intersects(wires[0], wires[1]);
+          for (var intersect of intersections) {
+            var dist = intersect.dist;
             if (dist !== 0 && (closest_dist === null || closest_dist > dist)) {
               closest_dist = dist;
             }
             point_draw(ctx, intersect);
+            console.log("Intersect: %o", intersect);
           }
 
           console.log("Closest: %d", closest_dist);
@@ -119,16 +120,79 @@
       }
 
       function find_all_intersects(wireA, wireB) {
-        var results = [];
-        for (var segmentA of wireA) {
-          for (var segmentB of wireB) {
-            var intersect_point = segment_intersect(segmentA, segmentB);
-            if (intersect_point !== null) {
-              results.push(intersect_point);
+        function build_key(x, y) {
+          return x * 100000 + y;
+        }
+        var intersections = [];
+
+        var map = [];
+        var step = 0;
+        for (var segment of wireA) {
+          console.log("Segment: %o; Steps: %d", segment, step);
+          var x = segment.start.x;
+          var y = segment.start.y;
+          while (x !== segment.end.x || y !== segment.end.y) {
+            if (x !== segment.end.x) {
+              if (x < segment.end.x) {
+                x++;
+              } else {
+                x--;
+              }
+            } else {
+              if (y < segment.end.y) {
+                y++;
+              } else {
+                y--;
+              }
+            }
+            step++;
+            var key = build_key(x, y);
+            if (!map[key]) {
+              map[key] = step;
             }
           }
         }
-        return results;
+
+        var mapB = [];
+        step = 0;
+        for (var segment of wireB) {
+          var x = segment.start.x;
+          var y = segment.start.y;
+          while (x !== segment.end.x || y !== segment.end.y) {
+            if (x !== segment.end.x) {
+              if (x < segment.end.x) {
+                x++;
+              } else {
+                x--;
+              }
+            } else {
+              if (y < segment.end.y) {
+                y++;
+              } else {
+                y--;
+              }
+            }
+            step++;
+            var key = build_key(x, y);
+            if (map[key] && !mapB[key]) {
+              var dist = map[key] + step;
+              console.log("Intersect found after %d+%d=%d steps", map[key], step, dist);
+              mapB[key] = dist;
+              var intersect = intersect_new(x, y, dist);
+              intersections.push(intersect);
+            }
+          }
+        }
+
+        return intersections;
+      }
+
+      function intersect_new(x, y, dist) {
+        return {
+          x,
+          y,
+          dist,
+        };
       }
 
       function point_new(x, y) {
