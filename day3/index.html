@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+    </style>
+  </head>
+  <body>
+    <div class="config">
+      <input type="file" id="filepicker" accept="text/plain" />
+    </div>
+    <div class="hud">
+      <canvas id="canvas" width="2000" height="2000"></canvas>
+      <pre id="input"></pre>
+    </div>
+    <script>
+      var CLR_BG = '#003300';
+      var CLR_ORIGIN = '#d9d9d9';
+      var CLR_WIRE_A = '#cc9900';
+      var CLR_WIRE_B = '#00b300';
+      var SCALE = 2;
+      var OFFSET_X = 0;
+      var OFFSET_Y = 0;
+      var CANVAS_WIDTH = 0;
+      var CANVAS_HEIGHT = 0;
+
+      function main() {
+        var ctx = canvas_init();
+        filepicker_init((data) => {
+          var wires = parse_wires(data);
+          ctx.strokeStyle = CLR_WIRE_A;
+          wire_draw(ctx, wires[0]);
+          ctx.strokeStyle = CLR_WIRE_B;
+          wire_draw(ctx, wires[1]);
+          // Draw origin
+          ctx.strokeStyle = CLR_ORIGIN;
+          point_draw(ctx, point_new(0, 0));
+
+          var closest_dist = null;
+          var intersections = find_all_intersects(wires[0], wires[1]);
+          for (var intersect of intersections) {
+            var dist = intersect.dist;
+            if (dist !== 0 && (closest_dist === null || closest_dist > dist)) {
+              closest_dist = dist;
+            }
+            point_draw(ctx, intersect);
+            console.log("Intersect: %o", intersect);
+          }
+
+          console.log("Closest: %d", closest_dist);
+        });
+      }
+
+      function filepicker_init(file_callback) {
+        var $filepicker = document.getElementById("filepicker");
+        $filepicker.onchange = (e) => {
+          var filename = e.target.value;
+          var file = e.target.files[0];
+          load_file(file, file_callback);
+        };
+      }
+
+      function canvas_init() {
+        var $canvas = document.getElementById("canvas");
+        CANVAS_WIDTH = $canvas.offsetWidth;
+        CANVAS_HEIGHT = $canvas.offsetHeight;
+        OFFSET_X = CANVAS_WIDTH / 2;
+        OFFSET_Y = CANVAS_HEIGHT / 2;
+        var ctx = $canvas.getContext('2d');
+        ctx.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.fillStyle = CLR_BG;
+        ctx.fill();
+        return ctx;
+      }
+
+      function load_file(file, load_callback) {
+        var reader = new FileReader();
+        reader.onload = ((e) => { load_callback(e.target.result); });
+        reader.readAsText(file);
+      }
+
+      function parse_wires(input) {
+        $input = document.getElementById("input");
+        $input.innerHTML = input;
+        var rawWires = input.split("\n");
+        var wireA = parse_wire(rawWires[0].trim());
+        var wireB = parse_wire(rawWires[1].trim());
+
+        return [wireA, wireB];
+      }
+
+      function parse_wire(raw) {
+        var instructions = raw.split(",");
+        var trace = point_new(0, 0);
+        var segments = [];
+        for (var inst of instructions) {
+          var direction = inst.charAt(0);
+          var magnitude = parseInt(inst.substring(1));
+          var start = Object.assign({}, trace);
+          switch (direction) {
+            case 'U':
+              trace = point_translate(trace, 0, magnitude);
+              break;
+            case 'D':
+              trace = point_translate(trace, 0, 0 - magnitude);
+              break;
+            case 'L':
+              trace = point_translate(trace, 0 - magnitude, 0);
+              break;
+            case 'R':
+              trace = point_translate(trace, magnitude, 0);
+              break;
+            default:
+              throw "Unexpected direction: " + direction;
+          }
+          var end = Object.assign({}, trace);
+          segments.push(segment_new(start, end));
+        }
+
+        return segments;
+      }
+
+      function find_all_intersects(wireA, wireB) {
+        function build_key(x, y) {
+          return x * 100000 + y;
+        }
+        var intersections = [];
+
+        var map = [];
+        var step = 0;
+        for (var segment of wireA) {
+          console.log("Segment: %o; Steps: %d", segment, step);
+          var x = segment.start.x;
+          var y = segment.start.y;
+          while (x !== segment.end.x || y !== segment.end.y) {
+            if (x !== segment.end.x) {
+              if (x < segment.end.x) {
+                x++;
+              } else {
+                x--;
+              }
+            } else {
+              if (y < segment.end.y) {
+                y++;
+              } else {
+                y--;
+              }
+            }
+            step++;
+            var key = build_key(x, y);
+            if (!map[key]) {
+              map[key] = step;
+            }
+          }
+        }
+
+        var mapB = [];
+        step = 0;
+        for (var segment of wireB) {
+          var x = segment.start.x;
+          var y = segment.start.y;
+          while (x !== segment.end.x || y !== segment.end.y) {
+            if (x !== segment.end.x) {
+              if (x < segment.end.x) {
+                x++;
+              } else {
+                x--;
+              }
+            } else {
+              if (y < segment.end.y) {
+                y++;
+              } else {
+                y--;
+              }
+            }
+            step++;
+            var key = build_key(x, y);
+            if (map[key] && !mapB[key]) {
+              var dist = map[key] + step;
+              console.log("Intersect found after %d+%d=%d steps", map[key], step, dist);
+              mapB[key] = dist;
+              var intersect = intersect_new(x, y, dist);
+              intersections.push(intersect);
+            }
+          }
+        }
+
+        return intersections;
+      }
+
+      function intersect_new(x, y, dist) {
+        return {
+          x,
+          y,
+          dist,
+        };
+      }
+
+      function point_new(x, y) {
+        return {x, y};
+      }
+
+      function point_translate(point, deltaX, deltaY) {
+        return {
+          x: point.x + deltaX,
+          y: point.y + deltaY,
+        };
+      }
+
+      function point_draw(ctx, point) {
+        var pointX = (point.x * SCALE) + OFFSET_X;
+        // Y is inverted
+        var pointY = (-point.y * SCALE) + OFFSET_Y;
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // Distance to origin
+      function point_manhattan(point) {
+        return Math.abs(point.x) + Math.abs(point.y);
+      }
+
+      function segment_new(startPoint, endPoint) {
+        return {
+          start: startPoint,
+          end: endPoint,
+        };
+      }
+
+      function segment_intersect(a, b) {
+        var aHSpanStart = Math.min(a.start.x, a.end.x);
+        var aHSpanEnd = Math.max(a.start.x, a.end.x);
+        var bHSpanStart = Math.min(b.start.x, b.end.x);
+        var bHSpanEnd = Math.max(b.start.x, b.end.x);
+
+        var aVSpanStart = Math.min(a.start.y, a.end.y);
+        var aVSpanEnd = Math.max(a.start.y, a.end.y);
+        var bVSpanStart = Math.min(b.start.y, b.end.y);
+        var bVSpanEnd = Math.max(b.start.y, b.end.y);
+
+        if (aHSpanEnd < bHSpanStart
+          || aHSpanStart > bHSpanEnd
+          || aVSpanEnd < bVSpanStart
+          || aVSpanStart > bVSpanEnd
+        ) {
+          return null;
+        }
+
+        // Where do they intersect (closest to 0 if overlapping)?
+        var hOverlapStart;
+        var hOverlapEnd;
+        if (aHSpanStart <= bHSpanStart) {
+          hOverlapStart = bHSpanStart;
+        } else {
+          hOverlapStart = aHSpanStart;
+        }
+
+        if (aHSpanEnd <= bHSpanEnd) {
+          hOverlapEnd = aHSpanEnd;
+        } else {
+          hOverlapEnd = bHSpanEnd;
+        }
+
+        var vOverlapStart;
+        var vOverlapEnd;
+        if (aVSpanStart <= bVSpanStart) {
+          vOverlapStart = bVSpanStart;
+        } else {
+          vOverlapStart = aVSpanStart;
+        }
+
+        if (aVSpanEnd <= bVSpanEnd) {
+          vOverlapEnd = aVSpanEnd;
+        } else {
+          vOverlapEnd = bVSpanEnd;
+        }
+
+        if (hOverlapStart === hOverlapEnd && vOverlapStart === vOverlapEnd) {
+          // Perpendicular
+          return point_new(hOverlapStart, vOverlapStart);
+        }
+
+        if (hOverlapStart === hOverlapEnd) {
+          // Vertical overlapping
+          var p1 = point_new(hOverlapStart, vOverlapStart);
+          var p2 = point_new(hOverlapStart, vOverlapEnd);
+
+          var d1 = point_manhattan(p1);
+          var d2 = point_manhattan(p2);
+          if (d1 < d2) {
+            return p1;
+          } else {
+            return p2;
+          }
+        } else {
+          // Horizontal overlapping
+          var p1 = point_new(hOverlapStart, vOverlapStart);
+          var p2 = point_new(hOverlapEnd, vOverlapStart);
+
+          var d1 = point_manhattan(p1);
+          var d2 = point_manhattan(p2);
+          if (d1 < d2) {
+            return p1;
+          } else {
+            return p2;
+          }
+        }
+      }
+
+      function wire_draw(ctx, wire) {
+        for (var segment of wire) {
+          ctx.beginPath();
+          var startX = (segment.start.x * SCALE) + OFFSET_X;
+          // Y is inverted
+          var startY = (-segment.start.y * SCALE) + OFFSET_Y;
+          ctx.moveTo(startX, startY);
+          var endX = (segment.end.x * SCALE) + OFFSET_X;
+          // Y is inverted
+          var endY = (-segment.end.y * SCALE) + OFFSET_Y;
+          ctx.lineTo(endX, endY);
+          ctx.closePath();
+          ctx.stroke();
+        }
+      }
+
+      main();
+    </script>
+  </body>
+</html>
