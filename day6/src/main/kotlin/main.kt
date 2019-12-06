@@ -1,5 +1,4 @@
 import java.io.File
-import java.lang.IllegalArgumentException
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
@@ -10,13 +9,27 @@ fun main(args: Array<String>) {
     val orbits = parseOrbits(input)
     val graph = buildGraph(orbits)
 
-    var total = 0
-    for (node in graph.nodes) {
-        val num = countOrbits(node, graph)
-        println("Node: $node Num: $num")
-        total += num
+    val chainA = getChain("YOU", graph, null)
+    val chainB = getChain("SAN", graph, null)
+    var match: String? = null
+    for (orb in chainA ) {
+        for (orbB in chainB) {
+            if  (orb == orbB) {
+                match = orb
+                break
+            }
+        }
+        if (match != null) {
+            break
+        }
     }
-    println("Total: $total")
+    val distA = countOrbits("YOU", graph, match)
+    val distB = countOrbits("SAN", graph, match)
+    val indirectA = distA - 1
+    val indirectB = distB - 1
+    val hops = indirectA + indirectB
+
+    println("Hops: $hops")
 }
 
 data class Orbit(val orbitee: String, val orbiter: String)
@@ -37,15 +50,22 @@ fun buildGraph(orbits: List<Orbit>): OrbitGraph {
     return OrbitGraph(nodes, edges)
 }
 
-fun countOrbits(orbiter: String, graph: OrbitGraph): Int {
-    var result = 0
+fun getChain(orbiter: String, graph: OrbitGraph, term: String?): List<String> {
+    var result = mutableListOf<String>()
     var orbitee = findOrbitee(orbiter, graph)
     while (orbitee != null) {
-        result++
+        result.add(orbitee)
+        if (orbitee == term) {
+            break
+        }
         orbitee = findOrbitee(orbitee, graph)
     }
 
     return result
+}
+
+fun countOrbits(orbiter: String, graph: OrbitGraph, term: String?): Int {
+    return getChain(orbiter, graph, term).size
 }
 
 fun findOrbitee(orbiter: String, graph: OrbitGraph): String? {

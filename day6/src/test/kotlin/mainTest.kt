@@ -1,4 +1,5 @@
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 
 class MainTest {
     @Test
@@ -49,5 +50,33 @@ class MainTest {
         assert(result.edges.contains(Pair("AAA", "BBB")))
         assert(result.edges.contains(Pair("BBB", "CCC")))
         assert(result.edges.contains(Pair("BBB", "DDD")))
+    }
+
+    @Test
+    fun testCountWithTerm() {
+        val graph = OrbitGraph(
+                setOf("AAA", "BBB", "CCC"),
+                setOf(
+                        Pair("AAA", "BBB"),
+                        Pair("BBB", "CCC")
+                ))
+
+        val result = countOrbits("CCC", graph, "BBB")
+        assertEquals(1, result)
+    }
+
+    @Test
+    fun testGetChain() {
+
+        val graph = OrbitGraph(
+                setOf("AAA", "BBB", "CCC"),
+                setOf(
+                        Pair("AAA", "BBB"),
+                        Pair("BBB", "CCC")
+                ))
+
+        val result = getChain("CCC", graph, null)
+
+        assertEquals(listOf("BBB", "AAA"), result)
     }
 }
