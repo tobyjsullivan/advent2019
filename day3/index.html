@@ -35,10 +35,17 @@
           ctx.strokeStyle = CLR_ORIGIN;
           point_draw(ctx, point_new(0, 0));
 
+          var closest_dist = null;
           var intersect_points = find_all_intersects(wires[0], wires[1]);
           for (var intersect of intersect_points) {
+            var dist = point_manhattan(intersect);
+            if (dist !== 0 && (closest_dist === null || closest_dist > dist)) {
+              closest_dist = dist;
+            }
             point_draw(ctx, intersect);
           }
+
+          console.log("Closest: %d", closest_dist);
         });
       }
 
