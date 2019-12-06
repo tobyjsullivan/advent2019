@@ -13,6 +13,13 @@
       <pre id="input"></pre>
     </div>
     <script>
+      var CLR_BG = '#003300';
+      var CLR_ORIGIN = '#d9d9d9';
+      var CLR_WIRE_A = '#ff0000';
+      var CLR_WIRE_B = '#00ff00';
+      var SCALE = 0.3;
+      var OFFSET_X = 0;
+      var OFFSET_Y = 0;
       var CANVAS_WIDTH = 0;
       var CANVAS_HEIGHT = 0;
 
@@ -20,9 +27,13 @@
         var ctx = canvas_init();
         filepicker_init((data) => { 
           var wires = parse_wires(data);
-          var center = point_new(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-          wire_draw(ctx, wires[0], center);
-          wire_draw(ctx, wires[1], center);
+          ctx.strokeStyle = CLR_WIRE_A;
+          wire_draw(ctx, wires[0]);
+          ctx.strokeStyle = CLR_WIRE_B;
+          wire_draw(ctx, wires[1]);
+          // Draw origin
+          ctx.strokeStyle = CLR_ORIGIN;
+          point_draw(ctx, point_new(0, 0));
         });
       }
 
@@ -39,7 +50,12 @@
         var $canvas = document.getElementById("canvas");
         CANVAS_WIDTH = $canvas.offsetWidth;
         CANVAS_HEIGHT = $canvas.offsetHeight;
+        OFFSET_X = CANVAS_WIDTH / 2;
+        OFFSET_Y = CANVAS_HEIGHT / 2;
         var ctx = $canvas.getContext('2d');
+        ctx.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.fillStyle = CLR_BG;
+        ctx.fill();
         return ctx;
       }
 
@@ -101,6 +117,16 @@
         };
       }
 
+      function point_draw(ctx, point) {
+        var pointX = (point.x * SCALE) + OFFSET_X;
+        // Y is inverted
+        var pointY = (-point.y * SCALE) + OFFSET_Y;
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.stroke();
+      }
+
       function segment_new(startPoint, endPoint) {
         return {
           start: startPoint,
@@ -108,19 +134,18 @@
         };
       }
 
-      function wire_draw(ctx, wire, centerPoint) {
-        var SCALE = 0.1;
-        var OFFSET_X = centerPoint.x;
-        var OFFSET_Y = centerPoint.y;
-
+      function wire_draw(ctx, wire) {
         for (var segment of wire) {
           ctx.beginPath();
           var startX = (segment.start.x * SCALE) + OFFSET_X;
-          var startY = (segment.start.y * SCALE) + OFFSET_Y;
+          // Y is inverted
+          var startY = (-segment.start.y * SCALE) + OFFSET_Y;
           ctx.moveTo(startX, startY);
           var endX = (segment.end.x * SCALE) + OFFSET_X;
-          var endY = (segment.end.y * SCALE) + OFFSET_Y;
+          // Y is inverted
+          var endY = (-segment.end.y * SCALE) + OFFSET_Y;
           ctx.lineTo(endX, endY);
+          ctx.closePath();
           ctx.stroke();
         }
       }
