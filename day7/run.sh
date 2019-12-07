@@ -54,24 +54,24 @@ main() {
 
   local highest
   local result
-  for a in 0 1 2 3 4; do
-    for b in 0 1 2 3 4; do
+  for a in 9 8 7 6 5; do
+    for b in 9 8 7 6 5; do
       if [[ "$a" -eq "$b" ]]; then
         continue
       fi
-      for c in 0 1 2 3 4; do
+      for c in 9 8 7 6 5; do
         if [[ "$a" -eq "$c" ]] || [[ "$b" -eq "$c" ]]; then
           continue
         fi
-        for d in 0 1 2 3 4; do
+        for d in 9 8 7 6 5; do
           if [[ "$a" -eq "$d" ]] || [[ "$b" -eq "$d" ]] || [[ "$c" -eq "$d" ]]; then
             continue
           fi
-          for e in 0 1 2 3 4; do
+          for e in 9 8 7 6 5; do
             if [[ "$a" -eq "$e" ]] || [[ "$b" -eq "$e" ]] || [[ "$c" -eq "$e" ]] || [[ "$d" -eq "$e" ]]; then
               continue
             fi
-            result=$(try_perm "${filename}" "$a" "$b" "$c" "$d" "$e")
+            result=$($COMPUTER "${filename}" "$a" "$b" "$c" "$d" "$e")
             echo "$a $b $c $d $e - $result"
             if [[ "${result}" -gt "${highest}" ]]; then
               highest="${result}"
